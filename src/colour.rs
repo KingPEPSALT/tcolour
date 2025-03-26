@@ -769,6 +769,14 @@ impl Into<ratatui::style::Color> for Colour {
     }
 }
 
+#[cfg(feature = "ratatui")]
+impl Into<ratatui::style::Color> for &Colour {
+    fn into(self) -> ratatui::style::Color {
+        let (r, g, b) = self.as_u8();
+        ratatui::style::Color::Rgb(r, g, b)
+    }
+}
+
 #[cfg(feature = "nalgebra")]
 impl From<Vector4<f64>> for Colour {
     fn from(value: Vector4<f64>) -> Colour {
