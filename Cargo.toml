@@ -9,7 +9,7 @@ homepage = "https://github.com/KingPEPSALT/tcolour"
 documentation = "https://doc.rs/tcolour"
 readme = "README.md"
 keywords = ["colour", "color", "rust"]
-categories = ["tui", "colour", "color"]
+categories = ["rendering", "rendering::data-formats", "multimedia"]
 edition = "2024"
 
 [dev-dependencies]
