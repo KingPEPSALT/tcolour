@@ -1,7 +1,8 @@
 [package]
 name = "tcolour"
 version = "0.1.0"
-license = "AGPL3.0"
+license = "AGPL-3.0-or-later"
+license-file = "AGPL-3.0-or-later.txt"
 description = "A colour library aimed at use with Ratatui."
 repository = "https://github.com/KingPEPSALT/tcolour"
 homepage = "https://github.com/KingPEPSALT/tcolour"
