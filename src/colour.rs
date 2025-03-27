@@ -360,7 +360,11 @@ impl Colour {
     /// using alpha compositing.
     ///
     /// The values are not necessarily normalised on return if `self`
-    /// or `other` are not normalised.
+    /// or `other` are not normalised. They are often not normalised 
+    /// with `BlendMode::Addition`, `BlendMode::Subtract` and 
+    /// `BlendMode::Divide`; these are intended to be normalised by 
+    /// the user but in general use should be normalised with 
+    /// `.clamped()`. 
     ///
     /// This treats `self` as the base layer and other as the
     /// blend layer, use `.blend_onto()` to swap this around
