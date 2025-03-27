@@ -2,6 +2,8 @@ use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use auto_ops::{impl_op_ex, impl_op_ex_commutative};
 use std::convert::TryFrom;
 
+#[cfg_attr(test, derive(strum_macros::EnumIter))]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum BlendMode {
     /// Do not blend, just compose the colours
     Normal,
@@ -28,7 +30,7 @@ pub struct Colour {
     pub a: f64,
 }
 
-#[cfg(feature="approx")]
+#[cfg(feature = "approx")]
 impl AbsDiffEq for Colour {
     type Epsilon = f64;
     fn default_epsilon() -> Self::Epsilon {
@@ -41,7 +43,7 @@ impl AbsDiffEq for Colour {
     }
 }
 
-#[cfg(feature="approx")]
+#[cfg(feature = "approx")]
 impl RelativeEq for Colour {
     fn default_max_relative() -> Self::Epsilon {
         1e-6
@@ -52,13 +54,13 @@ impl RelativeEq for Colour {
         epsilon: Self::Epsilon,
         max_relative: Self::Epsilon,
     ) -> bool {
-        self.all_rgba_with(*other,|v_self, v_other| {
+        self.all_rgba_with(*other, |v_self, v_other| {
             f64::relative_eq(&v_self, &v_other, epsilon, max_relative)
         })
     }
 }
 
-#[cfg(feature="approx")]
+#[cfg(feature = "approx")]
 impl UlpsEq for Colour {
     fn default_max_ulps() -> u32 {
         4
@@ -139,6 +141,17 @@ impl Colour {
         Self::from_u8(r, g, b).with_alpha(a as f64 / 255f64)
     }
 
+    /// Converts a u32 bit represenation of RGBA into
+    /// a Colour
+    pub fn from_u32_bitwise(bits: u32) -> Self {
+        Self::from_u8_rgba(
+            (bits << 24) as u8,
+            ((bits << 16) & 0xFF) as u8,
+            ((bits << 8) & 0xFF) as u8,
+            (bits & 0xFF) as u8,
+        )
+    }
+
     /// Converts the colour to a standard `u8` colour
     ///
     /// Note: does NOT composite the alpha into the colour,
@@ -158,6 +171,10 @@ impl Colour {
             (self.b * 255f64) as u8,
             (self.a * 255f64) as u8,
         )
+    }
+
+    pub fn is_normal(&self) -> bool {
+        self.all_rgba(|v| (v.is_normal() || v == 0f64) && v.clamp(0f64, 1f64) == v)
     }
 
     /// Returns a Colour with alpha as `1`.
@@ -313,6 +330,16 @@ impl Colour {
         )
     }
 
+    #[cfg(feature = "rand")]
+    pub fn random() -> Self {
+        Self::new(
+            rand::random_range(0f64..=1f64),
+            rand::random_range(0f64..=1f64),
+            rand::random_range(0f64..=1f64),
+            rand::random_range(0f64..=1f64),
+        )
+    }
+
     pub fn all<F: Fn(f64) -> bool>(&self, predicate: F) -> bool {
         predicate(self.r) && predicate(self.g) && predicate(self.b)
     }
@@ -422,43 +449,49 @@ impl Colour {
         self.r.min(self.g.min(self.b.min(self.a)))
     }
 
-    /// All `NaN`, `inf` and [subnormal](https://en.wikipedia.org/wiki/Subnormal_number) 
-    /// values become `1`, (the usual intended result for divisions by `0`). 
-    /// 
+    /// All `NaN`, `inf` and [subnormal](https://en.wikipedia.org/wiki/Subnormal_number)
+    /// values become `1`, (the usual intended result for divisions by `0`).
+    ///
     /// Returns the result.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use tcolour::Colour;
-    /// 
+    ///
     /// let colour = Colour::grey(0.5);
     /// let invalid_colour = colour / 0.0;
-    /// 
+    ///
     /// assert_eq!(invalid_colour.cleaned(), Colour::grey(1.0));
     /// ```
     pub fn cleaned(&self) -> Self {
-        self.map_rgba(|v| if !v.is_normal() { 1f64 } else { v })
+        self.map_rgba(|v| {
+            if !(v.is_normal() || v == 0f64) {
+                1f64
+            } else {
+                v
+            }
+        })
     }
 
-    /// All `NaN`, `inf` and [subnormal](https://en.wikipedia.org/wiki/Subnormal_number) 
-    /// values become `1`, (the usual intended result for divisions by `0`). 
-    /// 
+    /// All `NaN`, `inf` and [subnormal](https://en.wikipedia.org/wiki/Subnormal_number)
+    /// values become `1`, (the usual intended result for divisions by `0`).
+    ///
     /// Modifies `self` in place.
     ///    
     /// # Example
-    /// 
+    ///
     /// ```
     /// use tcolour::Colour;
-    /// 
+    ///
     /// let mut colour = Colour::grey(0.5) / 0.0;
     /// colour.clean();
-    /// 
+    ///
     /// assert_eq!(colour, Colour::grey(1.0));
     /// ```
     pub fn clean(&mut self) {
         self.apply_rgba(|v| {
-            if !v.is_normal() {
+            if !(v.is_normal() || *v == 0f64) {
                 *v = 1f64
             };
         });
@@ -517,7 +550,7 @@ impl Colour {
     /// Normalises the values using the highest and lowest
     /// values within the colour, including alpha. Only
     /// changes `self` if there is either a value above
-    /// or below `1` or `0`. If the highest colour is less 
+    /// or below `1` or `0`. If the highest colour is less
     /// than `1`, it is treated as `1` and if the lowest colour
     /// is more than `0` it is treated as `0`
     ///
@@ -645,35 +678,6 @@ impl TryFrom<Vec<f64>> for Colour {
         }
     }
 }
-impl TryFrom<&[u8]> for Colour {
-    type Error = String;
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if value.len() > 4 {
-            Err("There are too many elements.".to_string())
-        } else if value.len() < 3 {
-            Err("There are not enough elements.".to_string())
-        } else if value.len() == 3 {
-            Ok(Colour::from_u8(value[0], value[1], value[2]))
-        } else {
-            Ok(Colour::from_u8_rgba(value[0], value[1], value[2], value[3]))
-        }
-    }
-}
-
-impl TryFrom<Vec<u8>> for Colour {
-    type Error = String;
-    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-        if value.len() > 4 {
-            Err("There are too many elements.".to_string())
-        } else if value.len() < 3 {
-            Err("There are not enough elements.".to_string())
-        } else if value.len() == 3 {
-            Ok(Colour::from_u8(value[0], value[1], value[2]))
-        } else {
-            Ok(Colour::from_u8_rgba(value[0], value[1], value[2], value[3]))
-        }
-    }
-}
 
 impl Into<[f64; 4]> for Colour {
     fn into(self) -> [f64; 4] {
@@ -778,24 +782,27 @@ impl Into<ratatui::style::Color> for &Colour {
 }
 
 #[cfg(feature = "nalgebra")]
-impl From<Vector4<f64>> for Colour {
-    fn from(value: Vector4<f64>) -> Colour {
+impl From<nalgebra::Vector4<f64>> for Colour {
+    fn from(value: nalgebra::Vector4<f64>) -> Colour {
         Colour::new(value.x, value.y, value.z, value.w)
     }
 }
 
 #[cfg(feature = "nalgebra")]
-impl Into<Vector4<f64>> for Colour {
-    fn into(self) -> Vector4<f64> {
-        Vector4::new(self.r, self.g, self.b, self.a)
+impl Into<nalgebra::Vector4<f64>> for Colour {
+    fn into(self) -> nalgebra::Vector4<f64> {
+        nalgebra::Vector4::new(self.r, self.g, self.b, self.a)
     }
 }
 
 #[cfg(test)]
-mod test {
-    use approx::assert_relative_eq;
+mod tests {
 
-    use crate::Colour;
+    use approx::assert_relative_eq;
+    use crate::{BlendMode, Colour};
+    
+    #[cfg(feature="image-tests")]
+    use color_eyre::eyre::Result;
 
     #[test]
     pub fn ops_test() {
@@ -808,5 +815,86 @@ mod test {
         let c = Colour::grey(1.0);
         let d = Colour::transparent();
         assert_relative_eq!(d - c, Colour::grey(-1.0).with_alpha(0.0));
+    }
+
+    #[test]
+    pub fn blend_normality_test() {
+
+        use strum::IntoEnumIterator;
+
+        for blend_mode in BlendMode::iter() {
+            for _ in 0..5000 {
+                let base = Colour::random();
+                let blend = Colour::random();
+                let blended = base.blend(blend, blend_mode);
+
+                // We expect these to lie outside of [0,1] and whether these are normalised or clamped
+                // is up to the user
+                if [BlendMode::Addition, BlendMode::Divide, BlendMode::Subtract]
+                    .contains(&blend_mode)
+                {
+                    assert!(
+                        blended.cleaned() == blended,
+                        "{:?}: ({:?} blends onto {:?}) = {:?}",
+                        blend_mode,
+                        blend,
+                        base,
+                        blended
+                    )
+                } else {
+                    assert!(
+                        blended.is_normal(),
+                        "{:?}: ({:?} blends onto {:?}) = {:?}",
+                        blend_mode,
+                        blend,
+                        base,
+                        blended
+                    )
+                }
+            }
+        }
+    }
+
+    #[cfg(feature="image-tests")]
+    #[test]
+    pub fn blend_visual_test() -> Result<()> {
+        use image::{DynamicImage, GenericImageView, ImageFormat, ImageReader, Rgba, RgbaImage};
+
+        let cat = ImageReader::open("test/cat.jpg")?.decode()?;
+        let bricks = ImageReader::open("test/bricks.png")?.decode()?;
+        let get_colours = |image: &DynamicImage| -> Vec<Colour> {
+            image
+                .pixels()
+                .map(|(_, _, pixel)| {
+                    Colour::from_u8_rgba(pixel.0[0], pixel.0[1], pixel.0[2], pixel.0[3])
+                })
+                .collect()
+        };
+
+        let brick_colours = get_colours(&bricks);
+        let mut cat_colours = get_colours(&cat);
+        cat_colours = cat_colours.iter().map(|f| f.with_alpha(1.0)).collect();
+        let mut blended_image = RgbaImage::new(512, 512);
+
+        for (index, (base, blend)) in brick_colours.iter().zip(cat_colours).enumerate() {
+            let x = index as u32 % 512;
+            let y = index as u32 / 512;
+            blended_image.put_pixel(x, y, Rgba(base.blend(blend, BlendMode::Darken).into()));
+        }
+        blended_image.save_with_format("test/blended.png", ImageFormat::Png)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "deep-tests")]
+    #[test]
+    pub fn u8_normality_test() {
+        for i in 0..=u32::MAX {
+            // uses Colour::from_u8_rgba() under the hood
+            assert!(
+                Colour::from_u32_bitwise(i).is_normal(),
+                "{:?}",
+                Colour::from_u32_bitwise(i)
+            )
+        }
     }
 }

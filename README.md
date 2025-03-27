@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/tcolour.svg)](https://crates.io/crates/tcolour) [![Docs.rs](https://docs.rs/tcolour/badge.svg)](https://docs.rs/tcolour) [![License](https://img.shields.io/crates/l/tcolour.svg)](https://crates.io/crates/tcolour)
 
-**tcolour** is just a crate that I have made for a project I am working on. It is designed to work with [ratatui](https://ratatui.rs/) and also has capabilities to convert to and from [nalgebra](https://nalgebra.org/)'s `Vector4<f64>`. I intend to test this crate to some degree but not with extreme rigour, feel free to use.
+**tcolour** is just a crate that I have made for a project I am working on. It is designed to work with [ratatui](https://ratatui.rs/) and also has capabilities to convert to and from [nalgebra](https://nalgebra.org/)'s `Vector4<f64>`. I intend to test this crate to some degree but not with extreme rigour, I'll test it as I use it. Feel free to use or contribute.
 
 ## Examples
 

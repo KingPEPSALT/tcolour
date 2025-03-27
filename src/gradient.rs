@@ -84,11 +84,11 @@ impl Gradient {
     ///     (0.8, Colour::solid(0.0, 0.0, 1.0)),
     /// ]);
     ///
-    /// assert_eq!(gradient.get(0.6), Colour::solid(0.5, 0.5, 0.0));
-    /// assert_relative_eq!(gradient.get(0.65), Colour::solid(0.25, 0.75, 0.0));
-    /// assert_eq!(gradient.get(0.9), Colour::solid(0.0, 0.0, 1.0));
+    /// assert_eq!(gradient.sample(0.6), Colour::solid(0.5, 0.5, 0.0));
+    /// assert_relative_eq!(gradient.sample(0.65), Colour::solid(0.25, 0.75, 0.0));
+    /// assert_eq!(gradient.sample(0.9), Colour::solid(0.0, 0.0, 1.0));
     /// ```
-    pub fn get(&self, t: f64) -> Colour {
+    pub fn sample(&self, t: f64) -> Colour {
         self.interpolate(t, |from, to, t| {
             (from + (to - from) * t).with_alpha(from.a + (to.a - from.a) * t)
         })
@@ -130,7 +130,7 @@ impl Gradient {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use approx::assert_relative_eq;
 
     use super::Gradient;
@@ -213,8 +213,9 @@ mod test {
         ]);
 
         let other_gradient = Gradient(vec![(0.4, Colour::grey(1.0)), (0.6, Colour::transparent())]);
-        assert_eq!(other_gradient.get(0.5), Colour::grey(0.5).with_alpha(0.5));
-        assert_eq!(gradient.get(0.6), Colour::solid(0.5, 0.5, 0.0));
-        assert_relative_eq!(other_gradient.get(0.8), Colour::transparent());
+        assert_eq!(other_gradient.sample(0.5), Colour::grey(0.5).with_alpha(0.5));
+        assert_eq!(gradient.sample(0.6), Colour::solid(0.5, 0.5, 0.0));
+        assert_relative_eq!(other_gradient.sample(0.8), Colour::transparent());
+        assert_eq!(gradient.sample(0.1), Colour::red(1.0));
     }
 }
